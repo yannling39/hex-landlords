@@ -19,8 +19,8 @@ Task 3: complete
 Task 4: complete
 Task 5: complete
 Task 6: complete
-Task 7: in progress
-Task 8: not started
+Task 7: complete
+Task 8: in progress
 Task 9: not started
 
 Task 2: Ruling: ambiguous airplane card sets use the valid interpretation with the highest main rank — the GDD and spec do not prescribe a canonical interpretation when the exact cards admit multiple consecutive triple cores; this gives the single-pattern classifier deterministic behavior — cost if wrong: a player may be unable to request another legal interpretation of the same selected card set.
@@ -32,3 +32,4 @@ Task 3: complete (commits 2dada3f..5eabda3, tests: npm test → ℹ duration_ms 
 Task 4: complete (commit 213f877, tests: npm test → 32 passed; npm run build → passed)
 Task 5: complete (commit 1699227, tests: npm test → 39 passed; npm run build → passed)
 Task 6: complete (commit 17cd962, tests: npm test → 44 passed; npm run build → passed)
+Task 7: complete (commit f3ac56b, tests: npm test → 46 passed; npm run build → passed)
