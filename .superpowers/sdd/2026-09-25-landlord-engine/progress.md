@@ -14,8 +14,8 @@ BASE: f2833f8 (feature branch created from main after spec and plan commit)
 ## Task progress
 
 Task 1: complete
-Task 2: in progress
-Task 3: not started
+Task 2: complete
+Task 3: in progress
 Task 4: not started
 Task 5: not started
 Task 6: not started
@@ -24,4 +24,6 @@ Task 8: not started
 Task 9: not started
 
 Task 2: Ruling: ambiguous airplane card sets use the valid interpretation with the highest main rank — the GDD and spec do not prescribe a canonical interpretation when the exact cards admit multiple consecutive triple cores; this gives the single-pattern classifier deterministic behavior — cost if wrong: a player may be unable to request another legal interpretation of the same selected card set.
+Task 3: Ruling: use `npm run build` as the RED gate for missing type-only modules — `tsx` erases type-only imports so `npm test` passes without runtime modules; the compiler caught the missing type declarations before implementation — cost if wrong: the build gate could miss a runtime defect, which the JSON behavior tests continue to cover.
 Task 1: complete (commits f2833f8..e3982c1, tests: npm test → ℹ duration_ms 136.1336)
+Task 2: complete (commits e3982c1..2dada3f, tests: npm test → ℹ duration_ms 136.0793)
