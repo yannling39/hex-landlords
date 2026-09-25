@@ -21,7 +21,7 @@ Task 5: complete
 Task 6: complete
 Task 7: complete
 Task 8: complete
-Task 9: in progress
+Task 9: complete
 
 Task 2: Ruling: ambiguous airplane card sets use the valid interpretation with the highest main rank — the GDD and spec do not prescribe a canonical interpretation when the exact cards admit multiple consecutive triple cores; this gives the single-pattern classifier deterministic behavior — cost if wrong: a player may be unable to request another legal interpretation of the same selected card set.
 Task 3: Ruling: use `npm run build` as the RED gate for missing type-only modules — `tsx` erases type-only imports so `npm test` passes without runtime modules; the compiler caught the missing type declarations before implementation — cost if wrong: the build gate could miss a runtime defect, which the JSON behavior tests continue to cover.
@@ -34,3 +34,5 @@ Task 5: complete (commit 1699227, tests: npm test → 39 passed; npm run build �
 Task 6: complete (commit 17cd962, tests: npm test → 44 passed; npm run build → passed)
 Task 7: complete (commit f3ac56b, tests: npm test → 46 passed; npm run build → passed)
 Task 8: complete (commit db0fbe0, tests: npm test → 51 passed; npm run build → passed)
+Task 9: complete (commit 74489ba, tests: npm test → 52 passed; npm run build → passed; two demo runs produced identical output)
+Final review: independent review of f2833f8..74489ba found no blocking issues; residual scope is documented in the design spec (no network service and no HEX_DRAFT processor while hex is disabled).
