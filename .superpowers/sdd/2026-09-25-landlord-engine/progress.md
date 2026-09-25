@@ -18,8 +18,8 @@ Task 2: complete
 Task 3: complete
 Task 4: complete
 Task 5: complete
-Task 6: in progress
-Task 7: not started
+Task 6: complete
+Task 7: in progress
 Task 8: not started
 Task 9: not started
 
@@ -31,3 +31,4 @@ Task 2: complete (commits e3982c1..2dada3f, tests: npm test → ℹ duration_ms 
 Task 3: complete (commits 2dada3f..5eabda3, tests: npm test → ℹ duration_ms 140.9494)
 Task 4: complete (commit 213f877, tests: npm test → 32 passed; npm run build → passed)
 Task 5: complete (commit 1699227, tests: npm test → 39 passed; npm run build → passed)
+Task 6: complete (commit 17cd962, tests: npm test → 44 passed; npm run build → passed)
