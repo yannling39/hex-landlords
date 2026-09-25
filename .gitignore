@@ -1,0 +1,7 @@
+render_gdd/
+render_gdd_final/
+__pycache__/
+node_modules/
+dist/
+.env
+.codex/
