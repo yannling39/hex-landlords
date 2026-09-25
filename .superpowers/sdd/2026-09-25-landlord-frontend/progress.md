@@ -15,8 +15,8 @@ BASE: 1b594e2 (approved frontend plan committed on feat/landlord-engine)
 ## Task progress
 
 Task 1: complete (commit 9c439bb, npm test → 53 passed; npm run build → TypeScript and Vite passed)
-Task 2: in progress
-Task 3: not started
+Task 2: complete (commit 5e3877d, game-client tests: 6 passed; npm test: 59 passed; npm run build: passed)
+Task 3: in progress
 Task 4: not started
 Task 5: not started
 Task 6: not started
