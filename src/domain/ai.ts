@@ -19,7 +19,7 @@ function bidFor(view: PlayerView): Command {
 
 export function chooseAiCommand(view: PlayerView): Command {
   if (view.phase === 'BID') {
-    if (view.currentActor !== view.playerId) throw new Error('AI can only act for the current player');
+    if (view.bid.currentBidder !== view.playerId) throw new Error('AI can only act for the current bidder');
     return bidFor(view);
   }
   if (view.phase !== 'PLAY' || view.currentActor !== view.playerId) {
