@@ -16,7 +16,15 @@ BASE: 1b594e2 (approved frontend plan committed on feat/landlord-engine)
 
 Task 1: complete (commit 9c439bb, npm test → 53 passed; npm run build → TypeScript and Vite passed)
 Task 2: complete (commit 5e3877d, game-client tests: 6 passed; npm test: 59 passed; npm run build: passed)
-Task 3: in progress
-Task 4: not started
-Task 5: not started
-Task 6: not started
+Task 3: complete (npm test: 61 passed; npm run build: passed; presentation-only table and responsive styles implemented)
+Task 4: complete (5 interaction tests pass; bidding, controlled card selection, play/Pass and busy locking wired to GameClient)
+Task 5: complete (settlement and Run result views, Continue/restart actions; deterministic restart is also covered by GameClient tests)
+Task 6: complete (README updated; Vite browser verified on desktop and 375px mobile viewport for bidding, hidden/revealed bottom cards, play, Pass, rule feedback and deterministic restart; 65 tests and build passed)
+
+## Final verification
+
+- `npm test`: 65 passed, 0 failed.
+- `npm run build`: TypeScript check and Vite production bundle passed.
+- `git diff --check`: passed.
+- Browser QA: local Vite page rendered at desktop and 375px; no clipped top-level controls or hand cards (hand remains horizontally scrollable). Human bid, landlord reveal, card selection, play, AI follow, Pass, invalid play notice, and deterministic restart were exercised. Hand/Run results and Continue/restart buttons are component-tested; full three-hand browser completion is covered by the existing deterministic engine/client integration tests.
+- Self-review: components consume `GameSnapshot`/display data only; only `LocalGameClient` owns `GameState`; selection submits exact `CardId[]`; pending commands are guarded synchronously; failure notices preserve selected IDs; hidden opponent card IDs are excluded from rendered initial view.
