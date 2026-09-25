@@ -1,8 +1,12 @@
-import type { Card, CardId } from '../../domain/card.js';
+import { RANK_STRENGTH, type Card, type CardId } from '../../domain/card.js';
 import { formatCard } from './TrickArea.js';
 
 const suitMark: Record<Card['suit'], string> = {
   clubs: '♣', diamonds: '♦', hearts: '♥', spades: '♠', joker: '★',
+};
+
+const suitOrder: Record<Card['suit'], number> = {
+  clubs: 0, diamonds: 1, hearts: 2, spades: 3, joker: 4,
 };
 
 type PlayerHandProps = {
@@ -13,9 +17,13 @@ type PlayerHandProps = {
 };
 
 export default function PlayerHand({ cards, selectedCardIds, disabled, onToggleCard }: PlayerHandProps) {
+  const sortedCards = [...cards].sort((left, right) =>
+    RANK_STRENGTH[left.rank] - RANK_STRENGTH[right.rank]
+      || suitOrder[left.suit] - suitOrder[right.suit]);
+
   return (
     <div className="hand-cards" role="group" aria-label="玩家 A 手牌">
-      {cards.map((card, index) => {
+      {sortedCards.map((card, index) => {
         const selected = selectedCardIds.includes(card.id);
         const isRed = card.suit === 'hearts' || card.suit === 'diamonds';
         return (
