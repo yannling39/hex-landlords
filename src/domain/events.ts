@@ -4,6 +4,7 @@ import type { Pattern } from './pattern.js';
 
 export type GameEvent =
   | { type: 'BID_ACCEPTED'; playerId: PlayerId; score: BidScore }
+  | { type: 'HAND_REDEALT'; handNumber: number }
   | { type: 'LANDLORD_SELECTED'; playerId: PlayerId; bottomCards: Card[]; baseScore: BidScore }
   | { type: 'CARDS_PLAYED'; playerId: PlayerId; cards: Card[]; pattern: Pattern }
   | { type: 'PLAYER_PASSED'; playerId: PlayerId }
