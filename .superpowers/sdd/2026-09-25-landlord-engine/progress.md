@@ -16,8 +16,8 @@ BASE: f2833f8 (feature branch created from main after spec and plan commit)
 Task 1: complete
 Task 2: complete
 Task 3: complete
-Task 4: in progress
-Task 5: not started
+Task 4: complete
+Task 5: in progress
 Task 6: not started
 Task 7: not started
 Task 8: not started
@@ -29,3 +29,4 @@ Task 3: Plan note: `createRun` was intentionally verified in Task 4's behavioral
 Task 1: complete (commits f2833f8..e3982c1, tests: npm test → ℹ duration_ms 136.1336)
 Task 2: complete (commits e3982c1..2dada3f, tests: npm test → ℹ duration_ms 136.0793)
 Task 3: complete (commits 2dada3f..5eabda3, tests: npm test → ℹ duration_ms 140.9494)
+Task 4: complete (commit 213f877, tests: npm test → 32 passed; npm run build → passed)
