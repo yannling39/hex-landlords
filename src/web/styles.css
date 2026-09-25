@@ -1,0 +1,60 @@
+:root {
+  color: #f5f2e9;
+  background: #12372e;
+  font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+}
+
+button {
+  font: inherit;
+}
+
+.app-shell {
+  display: flex;
+  min-height: 100vh;
+  flex-direction: column;
+  padding: 20px clamp(16px, 3vw, 40px);
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 44px;
+}
+
+.app-header h1 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 650;
+}
+
+.run-label {
+  color: #d3ae61;
+  font-size: 14px;
+}
+
+.table-placeholder {
+  display: grid;
+  flex: 1;
+  min-height: 320px;
+  place-items: center;
+}
+
+.table-placeholder p {
+  margin: 0;
+  color: #dce7df;
+}
