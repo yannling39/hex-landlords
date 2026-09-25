@@ -6,6 +6,7 @@ export type GameEvent =
   | { type: 'BID_ACCEPTED'; playerId: PlayerId; score: BidScore }
   | { type: 'HAND_REDEALT'; handNumber: number }
   | { type: 'LANDLORD_SELECTED'; playerId: PlayerId; bottomCards: Card[]; baseScore: BidScore }
+  | { type: 'HAND_SETTLED'; handNumber: 1 | 2 | 3; winnerSide: 'LANDLORD' | 'FARMERS'; winnerId: PlayerId; scoreChanges: Record<PlayerId, number>; multiplier: number }
   | { type: 'CARDS_PLAYED'; playerId: PlayerId; cards: Card[]; pattern: Pattern }
   | { type: 'PLAYER_PASSED'; playerId: PlayerId }
   | { type: 'TRICK_CLOSED'; leaderId: PlayerId }

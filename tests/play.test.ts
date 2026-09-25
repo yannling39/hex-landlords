@@ -121,3 +121,31 @@ test('either farmer ending their hand immediately finishes the hand for farmers'
   assert.equal(transition.events[1].type === 'HAND_FINISHED' && transition.events[1].winnerSide, 'FARMERS');
   assert.equal(transition.events[1].type === 'HAND_FINISHED' && transition.events[1].winnerId, 'B');
 });
+
+test('each bomb and rocket doubles the multiplier', () => {
+  const state = {
+    ...playingState(),
+    hands: {
+      A: [card('Q', 0), card('Q', 1), card('Q', 2), card('Q', 3), card('3')],
+      B: [card('small-joker'), card('big-joker')],
+      C: [card('5')],
+    },
+  };
+  const bomb = applyPlay(state, {
+    type: 'PLAY',
+    playerId: 'A',
+    cardIds: state.hands.A.slice(0, 4).map((item) => item.id),
+  });
+  assert.equal(bomb.error, undefined);
+  assert.equal(bomb.state.multiplier, 2);
+  assert.equal(bomb.state.bombsPlayed, 1);
+
+  const rocket = applyPlay(bomb.state, {
+    type: 'PLAY',
+    playerId: 'B',
+    cardIds: state.hands.B.map((item) => item.id),
+  });
+  assert.equal(rocket.error, undefined);
+  assert.equal(rocket.state.multiplier, 4);
+  assert.equal(rocket.state.bombsPlayed, 2);
+});
