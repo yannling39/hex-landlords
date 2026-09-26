@@ -44,7 +44,7 @@ test('rejected command returns an unchanged view and public event history with a
 });
 
 test('three-hand Run pauses for each settlement and restart restores the fixed initial deal', async () => {
-  const client = new LocalGameClient(2026);
+  const client = new LocalGameClient(2026, 0);
   const initial = await client.getSnapshot();
   let snapshot = initial;
   let commands = 0;
@@ -72,6 +72,37 @@ test('three-hand Run pauses for each settlement and restart restores the fixed i
   assert.deepEqual(restarted.view, initial.view);
   assert.deepEqual(restarted.publicEvents, []);
   assert.equal(restarted.notice, null);
+});
+
+test('an unseeded client draws a fresh seed on restart', async () => {
+  const originalCrypto = globalThis.crypto;
+  let nextSeed = 1;
+  Object.defineProperty(globalThis, 'crypto', {
+    configurable: true,
+    value: { getRandomValues: (values: Uint32Array) => { values[0] = nextSeed++; return values; } },
+  });
+  try {
+    const client = new LocalGameClient();
+    const first = await client.getSnapshot();
+    const second = await client.restart();
+    assert.deepEqual(first.view, (await new LocalGameClient(1, 0).getSnapshot()).view);
+    assert.deepEqual(second.view, (await new LocalGameClient(2, 0).getSnapshot()).view);
+  } finally {
+    Object.defineProperty(globalThis, 'crypto', { configurable: true, value: originalCrypto });
+  }
+});
+
+test('client publishes each accepted play before advancing AI', async () => {
+  const client = new LocalGameClient(84, 5);
+  const progress: Array<{ phase: string; eventType: string | undefined }> = [];
+  await client.sendCommand({ type: 'BID', playerId: 'A', score: 3 });
+  const before = await client.getSnapshot();
+  const card = before.view.hand[0];
+  await client.sendCommand({ type: 'PLAY', playerId: 'A', cardIds: [card.id] }, (snapshot) => {
+    progress.push({ phase: snapshot.view.phase, eventType: snapshot.publicEvents.at(-1)?.type });
+  });
+  assert.equal(progress[0]?.eventType, 'CARDS_PLAYED');
+  assert.ok(progress.length >= 2);
 });
 
 test('client refuses commands submitted for another player without advancing state', async () => {

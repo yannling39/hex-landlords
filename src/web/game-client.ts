@@ -17,8 +17,8 @@ export type GameSnapshot = {
 
 export type GameClient = {
   getSnapshot(): Promise<GameSnapshot>;
-  sendCommand(command: Command): Promise<GameSnapshot>;
-  continueRun(): Promise<GameSnapshot>;
+  sendCommand(command: Command, onProgress?: (snapshot: GameSnapshot) => void): Promise<GameSnapshot>;
+  continueRun(onProgress?: (snapshot: GameSnapshot) => void): Promise<GameSnapshot>;
   restart(): Promise<GameSnapshot>;
 };
 
@@ -38,21 +38,31 @@ function yieldToBrowser(): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, 0));
 }
 
+function randomSeed(): number {
+  return globalThis.crypto.getRandomValues(new Uint32Array(1))[0];
+}
+
+function wait(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export class LocalGameClient implements GameClient {
   private state: GameState;
   private publicEvents: GameEvent[] = [];
   private notice: string | null = null;
   private inFlight = false;
+  private readonly fixedSeed: number | undefined;
 
-  constructor(private readonly seed = 2026) {
-    this.state = createRun({ seed });
+  constructor(seed?: number, private readonly playDelayMs = 1_000) {
+    this.fixedSeed = seed;
+    this.state = createRun({ seed: seed ?? randomSeed() });
   }
 
   async getSnapshot(): Promise<GameSnapshot> {
     return this.snapshot();
   }
 
-  async sendCommand(command: Command): Promise<GameSnapshot> {
+  async sendCommand(command: Command, onProgress?: (snapshot: GameSnapshot) => void): Promise<GameSnapshot> {
     if (this.inFlight) return this.snapshot('请等待当前操作完成');
     if (command.playerId !== 'A') return this.snapshot('只能提交玩家 A 的操作');
 
@@ -67,14 +77,16 @@ export class LocalGameClient implements GameClient {
 
       this.state = transition.state;
       this.publicEvents.push(...transition.events);
-      await this.advanceAiUntilHumanTurn();
+      onProgress?.(this.snapshot());
+      if (transition.events.some((event) => event.type === 'CARDS_PLAYED')) await wait(this.playDelayMs);
+      await this.advanceAiUntilHumanTurn(onProgress);
       return this.snapshot();
     } finally {
       this.inFlight = false;
     }
   }
 
-  async continueRun(): Promise<GameSnapshot> {
+  async continueRun(onProgress?: (snapshot: GameSnapshot) => void): Promise<GameSnapshot> {
     if (this.inFlight) return this.snapshot('请等待当前操作完成');
     if (this.state.phase !== 'NEXT_HAND') return this.snapshot('当前没有待继续的手牌');
 
@@ -88,7 +100,8 @@ export class LocalGameClient implements GameClient {
       }
       this.state = transition.state;
       this.publicEvents.push(...transition.events);
-      await this.advanceAiUntilHumanTurn();
+      onProgress?.(this.snapshot());
+      await this.advanceAiUntilHumanTurn(onProgress);
       return this.snapshot();
     } finally {
       this.inFlight = false;
@@ -99,7 +112,7 @@ export class LocalGameClient implements GameClient {
     if (this.inFlight) return this.snapshot('请等待当前操作完成');
     this.inFlight = true;
     try {
-      this.state = createRun({ seed: this.seed });
+      this.state = createRun({ seed: this.fixedSeed ?? randomSeed() });
       this.publicEvents = [];
       this.notice = null;
       return this.snapshot();
@@ -108,13 +121,14 @@ export class LocalGameClient implements GameClient {
     }
   }
 
-  private async advanceAiUntilHumanTurn(): Promise<void> {
+  private async advanceAiUntilHumanTurn(onProgress?: (snapshot: GameSnapshot) => void): Promise<void> {
     while (true) {
       if (this.state.phase === 'HAND_END') {
         const transition = settleHand(this.state);
         if (transition.error) throw new Error(`Could not settle hand: ${transition.error}`);
         this.state = transition.state;
         this.publicEvents.push(...transition.events);
+        onProgress?.(this.snapshot());
         continue;
       }
 
@@ -133,7 +147,9 @@ export class LocalGameClient implements GameClient {
       }
       this.state = transition.state;
       this.publicEvents.push(...transition.events);
-      await yieldToBrowser();
+      onProgress?.(this.snapshot());
+      if (transition.events.some((event) => event.type === 'CARDS_PLAYED')) await wait(this.playDelayMs);
+      else await yieldToBrowser();
     }
   }
 

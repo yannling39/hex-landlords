@@ -1,5 +1,6 @@
 import type { CardId } from '../../domain/card.js';
 import type { BidScore, PlayerId } from '../../domain/commands.js';
+import type { GameEvent } from '../../domain/events.js';
 import type { GameSnapshot } from '../game-client.js';
 import BidControls from './BidControls.js';
 import EventLog from './EventLog.js';
@@ -15,6 +16,7 @@ export type GameTableProps = {
   busy: boolean;
   selectedCardIds: CardId[];
   onToggleCard(cardId: CardId): void;
+  onSetCardSelection?(cardId: CardId, selected: boolean): void;
   onBid(score: BidScore): void;
   onPlay(): void;
   onPass(): void;
@@ -27,8 +29,20 @@ function isCurrentPlayer(snapshot: GameSnapshot, playerId: PlayerId): boolean {
   return snapshot.view.phase === 'PLAY' && snapshot.view.currentActor === playerId;
 }
 
-export default function GameTable({ snapshot, busy, selectedCardIds, onToggleCard, onBid, onPlay, onPass, onContinue, onRestart }: GameTableProps) {
+export default function GameTable({ snapshot, busy, selectedCardIds, onToggleCard, onSetCardSelection, onBid, onPlay, onPass, onContinue, onRestart }: GameTableProps) {
   const { view } = snapshot;
+  let previousHandEnd = -1;
+  snapshot.publicEvents.forEach((event, index) => {
+    if (event.type === 'HAND_SETTLED' && event.handNumber < view.handNumber) previousHandEnd = index;
+  });
+  const handEvents = snapshot.publicEvents.slice(previousHandEnd + 1);
+  function lastAction(playerId: PlayerId): Extract<GameEvent, { type: 'CARDS_PLAYED' | 'PLAYER_PASSED' }> | undefined {
+    for (let index = handEvents.length - 1; index >= 0; index -= 1) {
+      const event = handEvents[index];
+      if ((event.type === 'CARDS_PLAYED' || event.type === 'PLAYER_PASSED') && event.playerId === playerId) return event;
+    }
+    return undefined;
+  }
   const handSettlement = [...snapshot.publicEvents].reverse().find((event) => event.type === 'HAND_SETTLED');
   const runResult = [...snapshot.publicEvents].reverse().find((event) => event.type === 'RUN_FINISHED');
 
@@ -62,6 +76,7 @@ export default function GameTable({ snapshot, busy, selectedCardIds, onToggleCar
               score={view.runScores[playerId]}
               isCurrent={isCurrentPlayer(snapshot, playerId)}
               isLandlord={view.landlordId === playerId}
+              lastAction={lastAction(playerId)}
             />
           ))}
         </section>
@@ -84,10 +99,11 @@ export default function GameTable({ snapshot, busy, selectedCardIds, onToggleCar
             score={view.runScores.A}
             isCurrent={isCurrentPlayer(snapshot, 'A')}
             isLandlord={view.landlordId === 'A'}
+            lastAction={lastAction('A')}
           />
           <div className="hand-wrap">
             <h2>你的手牌 <span>{view.hand.length} 张</span></h2>
-            <PlayerHand cards={view.hand} selectedCardIds={selectedCardIds} disabled={busy || view.phase !== 'PLAY' || !isCurrentPlayer(snapshot, 'A')} onToggleCard={onToggleCard} />
+            <PlayerHand cards={view.hand} selectedCardIds={selectedCardIds} disabled={busy || view.phase !== 'PLAY' || !isCurrentPlayer(snapshot, 'A')} onToggleCard={onToggleCard} onSetCardSelection={onSetCardSelection} />
           </div>
           {view.phase === 'BID' && (
             <BidControls highestBid={view.bid.highestBid} disabled={busy || !isCurrentPlayer(snapshot, 'A')} onBid={onBid} />

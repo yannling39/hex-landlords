@@ -2,7 +2,7 @@ import type { Card } from '../../domain/card.js';
 import type { PlayerId } from '../../domain/commands.js';
 import type { PlayedMove } from '../../domain/state.js';
 
-const rankLabel: Record<Card['rank'], string> = {
+export const rankLabel: Record<Card['rank'], string> = {
   '3': '3', '4': '4', '5': '5', '6': '6', '7': '7', '8': '8', '9': '9', '10': '10',
   J: 'J', Q: 'Q', K: 'K', A: 'A', '2': '2', 'small-joker': '小王', 'big-joker': '大王',
 };
@@ -16,11 +16,12 @@ const suitMark: Record<Card['suit'], string> = {
 };
 
 export function formatCard(card: Card): string {
+  if (card.suit === 'joker') return rankLabel[card.rank];
   return `${rankLabel[card.rank]}${suitLabel[card.suit]}`;
 }
 
-function CardFace({ card, compact = false }: { card: Card; compact?: boolean }) {
-  const isRed = card.suit === 'hearts' || card.suit === 'diamonds';
+export function CardFace({ card, compact = false }: { card: Card; compact?: boolean }) {
+  const isRed = card.suit === 'hearts' || card.suit === 'diamonds' || card.rank === 'big-joker';
   return (
     <span
       className={`playing-card${isRed ? ' is-red' : ''}${compact ? ' is-compact' : ''}`}
@@ -36,7 +37,7 @@ function CardFace({ card, compact = false }: { card: Card; compact?: boolean }) 
   );
 }
 
-function CardRow({ cards, label }: { cards: readonly Card[]; label: string }) {
+export function CardRow({ cards, label }: { cards: readonly Card[]; label: string }) {
   return (
     <div className="card-row" role="group" aria-label={label}>
       {cards.map((card) => <CardFace key={card.id} card={card} compact />)}

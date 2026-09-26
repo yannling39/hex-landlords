@@ -21,12 +21,22 @@ export default function App() {
 
   if (!snapshot) return <main className="loading-state" role="status">正在准备牌桌</main>;
 
-  async function updateFrom(action: () => Promise<GameSnapshot>, clearSelection = false) {
+  async function updateFrom(action: (onProgress: (next: GameSnapshot) => void) => Promise<GameSnapshot>, clearSelection = false) {
     if (busyRef.current) return;
     busyRef.current = true;
     setBusy(true);
     try {
-      const next = await action();
+      let eventCount = snapshot?.publicEvents.length ?? 0;
+      const onProgress = (next: GameSnapshot) => {
+        const newEvents = next.publicEvents.slice(eventCount);
+        eventCount = next.publicEvents.length;
+        if (newEvents.some((event) => event.type === 'TRICK_CLOSED'
+          || (clearSelection && event.type === 'CARDS_PLAYED' && event.playerId === 'A'))) {
+          setSelectedCardIds([]);
+        }
+        setSnapshot(next);
+      };
+      const next = await action(onProgress);
       setSnapshot(next);
       if (!next.notice && clearSelection) setSelectedCardIds([]);
     } catch {
@@ -40,7 +50,7 @@ export default function App() {
   }
 
   function send(command: Command) {
-    void updateFrom(() => client.sendCommand(command), command.type === 'PLAY');
+    void updateFrom((onProgress) => client.sendCommand(command, onProgress), command.type === 'PLAY');
   }
 
   return (
@@ -51,10 +61,13 @@ export default function App() {
       onToggleCard={(cardId) => setSelectedCardIds((selected) => selected.includes(cardId)
         ? selected.filter((id) => id !== cardId)
         : [...selected, cardId])}
+      onSetCardSelection={(cardId, selected) => setSelectedCardIds((current) => selected
+        ? current.includes(cardId) ? current : [...current, cardId]
+        : current.filter((id) => id !== cardId))}
       onBid={(score: BidScore) => send({ type: 'BID', playerId: 'A', score })}
       onPlay={() => send({ type: 'PLAY', playerId: 'A', cardIds: selectedCardIds })}
       onPass={() => send({ type: 'PASS', playerId: 'A' })}
-      onContinue={() => void updateFrom(() => client.continueRun(), true)}
+      onContinue={() => void updateFrom((onProgress) => client.continueRun(onProgress), true)}
       onRestart={() => void updateFrom(() => client.restart(), true)}
     />
   );

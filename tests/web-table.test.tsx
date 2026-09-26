@@ -21,6 +21,7 @@ Object.defineProperties(globalThis, {
 
 const { cleanup, fireEvent, render, screen } = await import('@testing-library/react');
 const { default: GameTable } = await import('../src/web/components/GameTable.js');
+const { default: PlayerHand } = await import('../src/web/components/PlayerHand.js');
 
 afterEach(() => cleanup());
 
@@ -225,4 +226,37 @@ test('hand settlement shows score changes and Continue action; Run end shows fin
   assert.ok(screen.getByText('玩家 B：+3 分'));
   fireEvent.click(screen.getByRole('button', { name: '再开一局' }));
   assert.equal(restarted, 1);
+});
+
+test('each seat shows its latest play or pass', async () => {
+  const client = new LocalGameClient(84, 0);
+  const snapshot = await client.getSnapshot();
+  const card = snapshot.view.hand[0];
+  renderTable({
+    ...snapshot,
+    publicEvents: [
+      { type: 'CARDS_PLAYED', playerId: 'A', cards: [card], pattern: classifyCards([card])! },
+      { type: 'CARDS_PLAYED', playerId: 'B', cards: [card], pattern: classifyCards([card])! },
+      { type: 'PLAYER_PASSED', playerId: 'C' },
+    ],
+  });
+  assert.equal(screen.getByRole('group', { name: '玩家 A 最近动作' }).querySelectorAll('.playing-card').length, 1);
+  assert.equal(screen.getByRole('group', { name: '玩家 B 最近动作' }).querySelectorAll('.playing-card').length, 1);
+  assert.equal(screen.getByRole('group', { name: '玩家 C 最近动作' }).textContent, '不出');
+});
+
+test('pointer sweep sets the same selection state across a card range', async () => {
+  const cards = (await new LocalGameClient(84, 0).getSnapshot()).view.hand.slice(0, 3);
+  const selected: string[] = [];
+  const view = render(React.createElement(PlayerHand, {
+    cards, selectedCardIds: selected, disabled: false,
+    onToggleCard: () => {},
+    onSetCardSelection: (id: string, value: boolean) => {
+      if (value && !selected.includes(id)) selected.push(id);
+    },
+  }));
+  const buttons = [...view.container.querySelectorAll<HTMLButtonElement>('.hand-card')];
+  fireEvent.pointerDown(buttons[0], { pointerId: 1, pointerType: 'touch' });
+  fireEvent.pointerEnter(buttons[2], { pointerId: 1, pointerType: 'touch' });
+  assert.deepEqual(new Set(selected), new Set(cards.map((card) => card.id)));
 });

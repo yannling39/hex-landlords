@@ -134,6 +134,10 @@ button:focus-visible, [tabindex]:focus-visible {
 .seat-details { display: flex; grid-column: 1 / -1; justify-content: space-between; color: var(--muted); font-size: 12px; }
 .seat-score { color: #f5f2e9; }
 .seat-turn { position: absolute; top: 8px; right: 10px; color: var(--gold); font-size: 11px; }
+.seat-last-action { grid-column: 1 / -1; min-width: 0; min-height: 58px; overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; }
+.seat-last-action .card-row { width: max-content; min-height: 56px; justify-content: flex-start; }
+.seat-last-action .playing-card.is-compact { width: 34px; height: 50px; }
+.seat-passed { display: inline-block; padding: 14px 0; color: var(--muted); font-size: 14px; }
 
 .felt {
   position: relative;
@@ -203,8 +207,8 @@ button:focus-visible, [tabindex]:focus-visible {
 .human-area > .player-seat { width: 180px; }
 .hand-wrap { min-width: 0; }
 .hand-wrap h2 { display: flex; justify-content: space-between; margin: 0 0 8px; color: var(--muted); font-size: 13px; font-weight: 500; }
-.hand-cards { display: flex; min-height: 94px; align-items: end; overflow-x: auto; overflow-y: hidden; padding: 4px 6px 8px; scrollbar-color: var(--gold) rgb(8 34 27 / 30%); }
-.hand-cards .playing-card { margin-left: -13px; cursor: pointer; transition: transform 120ms ease, box-shadow 120ms ease; }
+.hand-cards { display: flex; min-height: 110px; align-items: end; overflow-x: auto; overflow-y: hidden; padding: 4px 6px 8px; scrollbar-color: var(--gold) rgb(8 34 27 / 30%); }
+.hand-cards .playing-card { width: 60px; height: 86px; margin-left: -18px; cursor: pointer; touch-action: none; user-select: none; transition: transform 120ms ease, box-shadow 120ms ease; }
 .hand-cards .playing-card:first-child { margin-left: 0; }
 .hand-cards .playing-card:hover { z-index: 2; transform: translateY(-7px); }
 .hand-cards .playing-card.is-selected { z-index: 1; transform: translateY(-10px); border-color: var(--gold); box-shadow: 0 0 0 2px var(--gold), 0 4px 7px rgb(0 0 0 / 22%); }
@@ -268,7 +272,7 @@ button:focus-visible, [tabindex]:focus-visible {
   .result-panel { grid-template-columns: minmax(0, 1fr); gap: 14px; padding: 15px; }
   .score-changes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; font-size: 12px; }
   .result-actions { justify-content: flex-start; }
-  .hand-cards { min-height: 92px; }
+  .hand-cards { min-height: 106px; }
 }
 
 @media (max-width: 480px) {
@@ -282,7 +286,7 @@ button:focus-visible, [tabindex]:focus-visible {
   .felt { min-height: 280px; padding-right: 14px; padding-left: 14px; }
   .felt-topline { right: 20px; left: 20px; }
   .playing-card { width: 44px; height: 64px; }
-  .hand-cards .playing-card { margin-left: -18px; }
+  .hand-cards .playing-card { width: 56px; height: 80px; margin-left: -26px; }
   .hand-cards .playing-card:first-child { margin-left: 0; }
 }
 
