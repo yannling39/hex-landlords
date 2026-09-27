@@ -23,11 +23,13 @@ function selectLandlord(state: GameState, playerId: PlayerId, score: BidScore, e
     bottomCards: [...state.bottomCards],
     baseScore: score,
   };
+  const crownActor = state.players.find((id) => state.hexPicks[id].some((hex) => hex.id === 'crown_me')) ?? null;
 
   return {
     state: {
       ...state,
-      phase: 'PLAY',
+      phase: crownActor ? 'KING_DESIGNATE' : 'PLAY',
+      crownActor,
       hands,
       landlordId: playerId,
       baseScore: score,

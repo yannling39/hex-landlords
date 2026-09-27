@@ -28,20 +28,22 @@ function formatEvent(event: GameEvent): string {
     case 'BID_ACCEPTED': return `玩家 ${event.playerId} 叫 ${event.score}`;
     case 'HAND_REDEALT': return `第 ${event.handNumber} 手无人叫分，重新发牌`;
     case 'LANDLORD_SELECTED': return `玩家 ${event.playerId} 成为地主，底分 ${event.baseScore}，底牌：${formatCards(event.bottomCards)}`;
-    case 'CARDS_PLAYED': return `玩家 ${event.playerId} 出牌：${formatCards(event.cards)} (${event.pattern.type})`;
-    case 'PLAYER_PASSED': return `玩家 ${event.playerId} 不出`;
+    case 'CARDS_PLAYED': return `玩家 ${event.playerId} 出牌：${formatCards(event.cards)} (${event.pattern.type})${event.declaration ? ` [${event.declaration.type}]` : ''}${event.reverse ? ' [逆流]' : ''}`;
+    case 'PLAYER_PASSED': return `玩家 ${event.playerId} 不出${event.discardedCard ? `，弃掉 ${formatCards([event.discardedCard])}` : ''}`;
     case 'TRICK_CLOSED': return `本墩结束，玩家 ${event.leaderId} 领出`;
     case 'HAND_FINISHED': return `本手结束：${event.winnerSide === 'LANDLORD' ? '地主方' : '农民方'}胜，倍数 x${event.multiplier}`;
     case 'HAND_SETTLED': return `第 ${event.handNumber} 手结算：${JSON.stringify(event.scoreChanges)}`;
+    case 'HEX_SELECTED': return `玩家 ${event.playerId} 抽取 ${event.label}`;
+    case 'KING_DESIGNATED': return `玩家 ${event.playerId} 指定 ${formatCards([event.card])} 为尊王牌`;
     case 'RUN_FINISHED': return `Run 结束：${JSON.stringify(event.scores)}，胜者 ${event.winnerId ?? '平局'}`;
   }
 }
 
-export function runDeterministicRun(seed: number, commandLimit = 10_000): RunResult {
-  let state = createRun({ seed });
+export function runDeterministicRun(seed: number, commandLimit = 10_000, hexEnabled = false): RunResult {
+  let state = createRun({ seed, hexEnabled });
   let commandCount = 0;
   let settledHands = 0;
-  const output = [`固定种子 ${seed}，开始三手 Run`];
+  const output = [`固定种子 ${seed}，开始六手 Run`];
 
   while (state.phase !== 'RUN_END') {
     if (commandCount >= commandLimit) throw new Error(`Run exceeded command limit ${commandLimit}`);
@@ -63,10 +65,12 @@ export function runDeterministicRun(seed: number, commandLimit = 10_000): RunRes
       continue;
     }
 
-    if (state.phase !== 'BID' && state.phase !== 'PLAY') {
+    if (state.phase !== 'BID' && state.phase !== 'PLAY' && state.phase !== 'HEX_DRAFT' && state.phase !== 'KING_DESIGNATE') {
       throw new Error(`Unsupported phase in baseline run: ${state.phase}`);
     }
-    const playerId = state.phase === 'BID' ? state.bid.currentBidder : state.currentActor;
+    const playerId = state.phase === 'BID' ? state.bid.currentBidder
+      : state.phase === 'HEX_DRAFT' ? state.hexDraft!.currentPlayer
+      : state.phase === 'KING_DESIGNATE' ? state.crownActor! : state.currentActor;
     const command = chooseAiCommand(viewForPlayer(state, playerId));
     const transition = dispatch(state, command);
     if (transition.error) throw new Error(`AI command rejected (${transition.error}): ${JSON.stringify(command)}`);

@@ -3,7 +3,7 @@ import type { GameEvent } from '../../domain/events.js';
 
 type SettlementEvent = Extract<GameEvent, { type: 'HAND_SETTLED' }>;
 
-export default function HandResult({ settlement, onContinue }: { settlement: SettlementEvent; onContinue(): void }) {
+export default function HandResult({ settlement, onContinue, busy = false }: { settlement: SettlementEvent; onContinue?: () => void; busy?: boolean }) {
   const side = settlement.winnerSide === 'LANDLORD' ? '地主方' : '农民方';
   const players: PlayerId[] = ['A', 'B', 'C'];
 
@@ -22,9 +22,9 @@ export default function HandResult({ settlement, onContinue }: { settlement: Set
           })}
         </div>
       </div>
-      <div className="result-actions">
-        <button className="action-primary" type="button" onClick={onContinue}>继续下一手</button>
-      </div>
+      {onContinue && <div className="result-actions">
+        <button className="action-primary" type="button" disabled={busy} onClick={onContinue}>继续下一手</button>
+      </div>}
     </section>
   );
 }

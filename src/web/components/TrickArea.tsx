@@ -1,5 +1,5 @@
 import type { Card } from '../../domain/card.js';
-import type { PlayerId } from '../../domain/commands.js';
+import type { PlayerId, PlayDeclaration } from '../../domain/commands.js';
 import type { PlayedMove } from '../../domain/state.js';
 
 export const rankLabel: Record<Card['rank'], string> = {
@@ -18,6 +18,15 @@ const suitMark: Record<Card['suit'], string> = {
 export function formatCard(card: Card): string {
   if (card.suit === 'joker') return rankLabel[card.rank];
   return `${rankLabel[card.rank]}${suitLabel[card.suit]}`;
+}
+
+export function formatDeclaration(declaration: PlayDeclaration, cards: readonly Card[] = []): string {
+  if (declaration.type === 'RESONANCE') {
+    const source = cards.find((card) => card.id === declaration.cardId);
+    return `共鸣：${source ? formatCard(source) : '指定牌'}视为${declaration.asRank}`;
+  }
+  if (declaration.type === 'BROKEN_STRAIGHT') return '断章';
+  return '同色协定';
 }
 
 export function CardFace({ card, compact = false }: { card: Card; compact?: boolean }) {
@@ -47,6 +56,7 @@ export function CardRow({ cards, label }: { cards: readonly Card[]; label: strin
 
 type TrickAreaProps = {
   lastPlay: PlayedMove | null;
+  trickMode: 'normal' | 'reverse';
   currentActor: PlayerId;
   phase: string;
   multiplier: number;
@@ -54,22 +64,25 @@ type TrickAreaProps = {
   landlordId: PlayerId | null;
 };
 
-export default function TrickArea({ lastPlay, currentActor, phase, multiplier, bottomCards, landlordId }: TrickAreaProps) {
+export default function TrickArea({ lastPlay, trickMode, currentActor, phase, multiplier, bottomCards, landlordId }: TrickAreaProps) {
   return (
     <section className="felt" aria-label="牌桌中央">
       <div className="felt-topline">
-        <span className="phase-label">{phase === 'BID' ? '叫地主' : phase === 'PLAY' ? '出牌' : phase}</span>
+        <span className="phase-label">{phase === 'BID' ? '叫地主' : phase === 'PLAY' ? '出牌' : phase === 'HEX_DRAFT' ? '海克斯抽取' : phase === 'KING_DESIGNATE' ? '尊王牌指定' : phase}</span>
         <span className="multiplier">倍数 x{multiplier}</span>
       </div>
       <p className="turn-prompt" role="status">
-        {phase === 'BID' ? `等待玩家 ${currentActor} 叫分` : phase === 'PLAY' ? `轮到玩家 ${currentActor}` : '本手已结束'}
+        {phase === 'BID' ? `等待玩家 ${currentActor} 叫分` : phase === 'PLAY' ? `轮到玩家 ${currentActor}` : phase === 'KING_DESIGNATE' ? '等待指定尊王牌' : '本手已结束'}
       </p>
       {landlordId && <p className="landlord-summary" role="status">地主：玩家 {landlordId}</p>}
+      {phase === 'PLAY' && trickMode === 'reverse' && lastPlay && (
+        <span className="trick-mode" role="status" title="3至A倒序比较；2、大小王及炸弹仍按正常规则">逆流生效 · 小牌压大牌</span>
+      )}
       {lastPlay ? (
         <div className="last-play">
           <span className="last-play-owner">玩家 {lastPlay.playerId} 出牌</span>
           <CardRow cards={lastPlay.cards} label={`玩家 ${lastPlay.playerId} 的桌面牌`} />
-          <span className="pattern-label">{lastPlay.pattern.type.replaceAll('_', ' ')}</span>
+          <span className="pattern-label">{lastPlay.declaration ? formatDeclaration(lastPlay.declaration, lastPlay.cards) : lastPlay.pattern.type.replaceAll('_', ' ')}</span>
         </div>
       ) : (
         <div className="empty-trick">等待领出</div>

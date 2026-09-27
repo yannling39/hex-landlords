@@ -9,6 +9,7 @@ const sampleCard: Card = { id: 'clubs:3', suit: 'clubs', rank: '3' };
 
 const sampleState: GameState = {
   version: 1,
+  seed: 1,
   phase: 'BID',
   players: ['A', 'B', 'C'],
   hands: {
@@ -38,6 +39,13 @@ const sampleState: GameState = {
   multiplier: 1,
   bombsPlayed: 0,
   hexEnabled: false,
+  hexDraft: null,
+  hexPicks: { A: [], B: [], C: [] },
+  hexUses: { A: { abandon: 0, sameColor: 0 }, B: { abandon: 0, sameColor: 0 }, C: { abandon: 0, sameColor: 0 } },
+  crownCards: { A: null, B: null, C: null },
+  crownActor: null,
+  trickMode: 'normal',
+  discardedCards: [],
 };
 
 test('game state survives JSON serialization without runtime-only collections', () => {

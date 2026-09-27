@@ -32,6 +32,7 @@ const errorNotices: Record<RuleErrorCode, string> = {
   CANNOT_BEAT_CURRENT_PLAY: '所选牌无法压过桌面牌',
   CANNOT_PASS_WHEN_LEADING: '领出时不能不出',
   PLAYER_ALREADY_FINISHED: '你已出完手牌',
+  INVALID_HEX_CHOICE: '请选择当前可用的海克斯候选',
 };
 
 function yieldToBrowser(): Promise<void> {
@@ -53,9 +54,9 @@ export class LocalGameClient implements GameClient {
   private inFlight = false;
   private readonly fixedSeed: number | undefined;
 
-  constructor(seed?: number, private readonly playDelayMs = 1_000) {
+  constructor(seed?: number, private readonly playDelayMs = 1_000, private readonly hexEnabled = false) {
     this.fixedSeed = seed;
-    this.state = createRun({ seed: seed ?? randomSeed() });
+    this.state = createRun({ seed: seed ?? randomSeed(), hexEnabled });
   }
 
   async getSnapshot(): Promise<GameSnapshot> {
@@ -112,7 +113,7 @@ export class LocalGameClient implements GameClient {
     if (this.inFlight) return this.snapshot('请等待当前操作完成');
     this.inFlight = true;
     try {
-      this.state = createRun({ seed: this.fixedSeed ?? randomSeed() });
+      this.state = createRun({ seed: this.fixedSeed ?? randomSeed(), hexEnabled: this.hexEnabled });
       this.publicEvents = [];
       this.notice = null;
       return this.snapshot();
@@ -134,8 +135,22 @@ export class LocalGameClient implements GameClient {
 
       if (this.state.phase === 'NEXT_HAND' || this.state.phase === 'RUN_END') return;
 
+      if (this.state.phase === 'HEX_DRAFT') {
+        const draft = this.state.hexDraft;
+        if (!draft) throw new Error('Hex draft is missing its candidates');
+        if (draft.currentPlayer === 'A') return;
+        const transition = dispatch(this.state, chooseAiCommand(viewForPlayer(this.state, draft.currentPlayer)));
+        if (transition.error) throw new Error(`AI hex choice rejected: ${transition.error}`);
+        this.state = transition.state;
+        this.publicEvents.push(...transition.events);
+        onProgress?.(this.snapshot());
+        if (this.state.phase === 'HEX_DRAFT') await wait(450);
+        continue;
+      }
+
       let actor: PlayerId;
       if (this.state.phase === 'BID') actor = this.state.bid.currentBidder;
+      else if (this.state.phase === 'KING_DESIGNATE' && this.state.crownActor) actor = this.state.crownActor;
       else if (this.state.phase === 'PLAY') actor = this.state.currentActor;
       else throw new Error(`Unsupported local game phase: ${this.state.phase}`);
 

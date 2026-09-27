@@ -6,6 +6,7 @@ import { createRun } from '../src/domain/setup.js';
 import { viewForPlayer } from '../src/domain/player-view.js';
 import type { PlayerView } from '../src/domain/player-view.js';
 import type { Rank } from '../src/domain/card.js';
+import { HEXES } from '../src/domain/hex.js';
 
 const deck = createDeck();
 function card(rank: Rank, copy = 0) {
@@ -46,6 +47,55 @@ test('AI preserves a bomb when an ordinary response is available', () => {
     lastPlay: { playerId: 'B', cards: [card('3')], pattern: { type: 'SINGLE', mainRank: 3, sequenceLength: 1, attachmentMode: 'none', cardCount: 1 } },
   }));
   assert.deepEqual(command, { type: 'PLAY', playerId: 'A', cardIds: [card('4').id] });
+});
+
+test('AI designates a card when holding crown before play', () => {
+  const current = view(['3', 'A'], { phase: 'KING_DESIGNATE', crownActor: 'A' });
+  assert.deepEqual(chooseAiCommand(current), { type: 'DESIGNATE_KING', playerId: 'A', cardId: card('3').id });
+});
+
+test('AI uses a legal declared pair when resonance joins two ranks', () => {
+  const hex = HEXES.find((item) => item.id === 'resonance')!;
+  const hand = [card('3'), card('Q'), card('A')];
+  const command = chooseAiCommand(view(['3', 'Q', 'A'], {
+    hand,
+    hexPicks: { A: [hex], B: [], C: [] },
+  }));
+  assert.equal(command.type, 'PLAY');
+  if (command.type === 'PLAY') assert.equal(command.declaration?.type, 'RESONANCE');
+});
+
+test('AI drafts an offered hex and uses abandon when no response exists', () => {
+  const hex = HEXES.find((item) => item.id === 'abandon')!;
+  const draft = view(['3'], { phase: 'HEX_DRAFT', hexDraft: { currentPlayer: 'A', candidates: [hex] } });
+  assert.deepEqual(chooseAiCommand(draft), { type: 'SELECT_HEX', playerId: 'A', candidateId: hex.id });
+  const active = view(['3', '4'], {
+    hand: [card('3'), card('4')],
+    hexPicks: { A: [hex], B: [], C: [] },
+    lastPlay: { playerId: 'B', cards: [card('big-joker')], pattern: { type: 'SINGLE', mainRank: 17, sequenceLength: 1, attachmentMode: 'none', cardCount: 1 } },
+  });
+  assert.deepEqual(chooseAiCommand(active), { type: 'PASS', playerId: 'A', discardCardId: card('3').id });
+});
+
+test('AI reverses a low lead and lets its farmer teammate keep the trick', () => {
+  const reverse = HEXES.find((hex) => hex.id === 'reverse_flow')!;
+  const lead = chooseAiCommand(view(['3', 'A'], { hexPicks: { A: [reverse], B: [], C: [] } }));
+  assert.equal(lead.type, 'PLAY');
+  if (lead.type === 'PLAY') assert.equal(lead.reverse, true);
+  const teammate = chooseAiCommand(view(['5', '8'], {
+    landlordId: 'C',
+    lastPlay: { playerId: 'B', cards: [card('4')], pattern: { type: 'SINGLE', mainRank: 4, sequenceLength: 1, attachmentMode: 'none', cardCount: 1 } },
+  }));
+  assert.deepEqual(teammate, { type: 'PASS', playerId: 'A' });
+});
+
+test('AI saves its crown single when a natural single can beat', () => {
+  const crown = HEXES.find((hex) => hex.id === 'crown_me')!;
+  const command = chooseAiCommand(view(['3', '5'], {
+    hexPicks: { A: [crown], B: [], C: [] }, crownCards: { A: card('3').id, B: null, C: null },
+    lastPlay: { playerId: 'B', cards: [card('4')], pattern: { type: 'SINGLE', mainRank: 4, sequenceLength: 1, attachmentMode: 'none', cardCount: 1 } },
+  }));
+  assert.deepEqual(command, { type: 'PLAY', playerId: 'A', cardIds: [card('5').id] });
 });
 
 test('AI bids only a legal ascending score based on its own hand', () => {

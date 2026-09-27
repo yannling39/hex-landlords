@@ -1,10 +1,11 @@
 import { createDeck, dealHand, shuffle } from './deck.js';
 import { createSeededRandom } from './random.js';
+import { createHexDraft } from './hex.js';
 import type { GameState, PreparedDeal } from './state.js';
 
-export function createRun({ seed }: { seed: number }): GameState {
+export function createRun({ seed, hexEnabled = false }: { seed: number; hexEnabled?: boolean }): GameState {
   const random = createSeededRandom(seed);
-  const preparedDeals: PreparedDeal[][] = Array.from({ length: 3 }, () =>
+  const preparedDeals: PreparedDeal[][] = Array.from({ length: 6 }, () =>
     Array.from({ length: 3 }, () => {
       const dealt = dealHand(shuffle(createDeck(), random));
       return {
@@ -17,7 +18,8 @@ export function createRun({ seed }: { seed: number }): GameState {
 
   return {
     version: 1,
-    phase: 'BID',
+    seed,
+    phase: hexEnabled ? 'HEX_DRAFT' : 'BID',
     players: ['A', 'B', 'C'],
     hands: {
       A: [...initialDeal.hands.A],
@@ -45,6 +47,13 @@ export function createRun({ seed }: { seed: number }): GameState {
     consecutivePasses: 0,
     multiplier: 1,
     bombsPlayed: 0,
-    hexEnabled: false,
+    hexEnabled,
+    hexDraft: hexEnabled ? createHexDraft(1, 'A', seed) : null,
+    hexPicks: { A: [], B: [], C: [] },
+    hexUses: { A: { abandon: 0, sameColor: 0 }, B: { abandon: 0, sameColor: 0 }, C: { abandon: 0, sameColor: 0 } },
+    crownCards: { A: null, B: null, C: null },
+    crownActor: null,
+    trickMode: 'normal',
+    discardedCards: [],
   };
 }

@@ -11,7 +11,7 @@ function bid(state: GameState, playerId: PlayerId, score: BidScore): GameState {
   return transition.state;
 }
 
-test('createRun prepares three deterministic hands and starts the first bidding round at A', () => {
+test('createRun prepares six deterministic hands and starts the first bidding round at A', () => {
   const first = createRun({ seed: 417 });
   const second = createRun({ seed: 417 });
 
@@ -20,7 +20,7 @@ test('createRun prepares three deterministic hands and starts the first bidding 
   assert.equal(first.handNumber, 1);
   assert.equal(first.firstBidder, 'A');
   assert.equal(first.bid.currentBidder, 'A');
-  assert.equal(first.preparedDeals.length, 3);
+  assert.equal(first.preparedDeals.length, 6);
   assert.ok(first.preparedDeals.every((attempts) => attempts.length === 3));
   assert.equal(first.hands.A.length, 17);
   assert.equal(first.hands.B.length, 17);

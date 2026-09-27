@@ -9,8 +9,8 @@ export default function RunResult({ result, onRestart }: { result: RunFinishedEv
     <section className="result-panel run-result" aria-labelledby="run-result-title" aria-live="polite">
       <div className="result-heading">
         <div>
-          <p className="result-kicker">三手 Run 结束</p>
-          <h2 id="run-result-title">{result.winnerId ? `玩家 ${result.winnerId} 获胜` : '三手 Run 平局'}</h2>
+          <p className="result-kicker">六手 Run 结束</p>
+          <h2 id="run-result-title">{result.winnerId ? `玩家 ${result.winnerId} 获胜` : '六手 Run 平局'}</h2>
         </div>
         <div className="score-changes" aria-label="最终分数">
           {players.map((playerId) => {

@@ -3,7 +3,10 @@ import { afterEach, test } from 'node:test';
 import { JSDOM } from 'jsdom';
 import React from 'react';
 import { createRun } from '../src/domain/setup.js';
+import { createDeck } from '../src/domain/deck.js';
 import { classifyCards } from '../src/domain/pattern.js';
+import { HEXES } from '../src/domain/hex.js';
+import type { PlayDeclaration } from '../src/domain/commands.js';
 import { LocalGameClient, type GameSnapshot } from '../src/web/game-client.js';
 
 const dom = new JSDOM('<!doctype html><html><body></body></html>', { url: 'http://localhost' });
@@ -158,7 +161,7 @@ test('selected card can be played and follow/pass controls remain locked while b
     phase: 'PLAY' as const,
     currentActor: 'A' as const,
     landlordId: 'A' as const,
-    lastPlay: { playerId: 'B' as const, cards: [card], pattern: classifyCards([card])! },
+    lastPlay: { playerId: 'B' as const, cards: [createDeck().find((item) => item.rank === '3')!], pattern: classifyCards([createDeck().find((item) => item.rank === '3')!])! },
   };
   const props = {
     snapshot: { ...snapshot, view: playView },
@@ -222,10 +225,84 @@ test('hand settlement shows score changes and Continue action; Run end shows fin
       publicEvents: [{ type: 'RUN_FINISHED', scores: { A: 3, B: 3, C: -6 }, winnerId: null }],
     },
   }));
-  assert.ok(screen.getByText('三手 Run 平局'));
+  assert.ok(screen.getByText('六手 Run 平局'));
   assert.ok(screen.getByText('玩家 B：+3 分'));
   fireEvent.click(screen.getByRole('button', { name: '再开一局' }));
   assert.equal(restarted, 1);
+});
+
+test('reverse trick is visible and only a beating selection enables play', async () => {
+  const snapshot = await new LocalGameClient(84).getSnapshot();
+  const deck = createDeck();
+  const three = deck.find((card) => card.rank === '3')!;
+  const five = deck.find((card) => card.rank === '5')!;
+  const two = deck.find((card) => card.rank === '2')!;
+  const lastPlay = { playerId: 'B' as const, cards: [three], pattern: classifyCards([three])! };
+  const event = { type: 'CARDS_PLAYED' as const, playerId: 'B' as const, cards: [three], pattern: lastPlay.pattern, reverse: true };
+  let plays = 0;
+  const props = {
+    snapshot: { ...snapshot, view: { ...snapshot.view, phase: 'PLAY' as const, currentActor: 'A' as const, hand: [five, two], lastPlay, trickMode: 'reverse' as const }, publicEvents: [event] },
+    busy: false, selectedCardIds: [five.id], onToggleCard: () => {}, onBid: () => {},
+    onPlay: () => { plays += 1; }, onPass: () => {}, onContinue: () => {}, onRestart: () => {},
+  };
+  const table = render(React.createElement(GameTable, props));
+  assert.ok(screen.getByText(/逆流生效/));
+  assert.ok(screen.getByText(/玩家 B 发动逆流/));
+  assert.equal(screen.getByRole('button', { name: '出牌' }).hasAttribute('disabled'), true);
+  fireEvent.click(screen.getByRole('button', { name: '出牌' }));
+  assert.equal(plays, 0);
+
+  table.rerender(React.createElement(GameTable, { ...props, selectedCardIds: [two.id] }));
+  assert.equal(screen.getByRole('button', { name: '出牌' }).hasAttribute('disabled'), false);
+  table.rerender(React.createElement(GameTable, {
+    ...props, snapshot: { ...props.snapshot, view: { ...props.snapshot.view, trickMode: 'normal' as const }, publicEvents: [] },
+  }));
+  assert.equal(screen.queryByText(/逆流生效/), null);
+  assert.equal(screen.getByRole('button', { name: '出牌' }).hasAttribute('disabled'), false);
+});
+
+test('reverse holder can choose activation for a single lead, and changing selection resets it', async () => {
+  const snapshot = await new LocalGameClient(84).getSnapshot();
+  const [three, four] = createDeck().filter((card) => card.suit === 'clubs').slice(0, 2);
+  const reverse = HEXES.find((hex) => hex.id === 'reverse_flow')!;
+  const plays: boolean[] = [];
+  const props = {
+    snapshot: { ...snapshot, view: { ...snapshot.view, phase: 'PLAY' as const, currentActor: 'A' as const,
+      hand: [three, four], hexPicks: { ...snapshot.view.hexPicks, A: [reverse] } } },
+    busy: false, selectedCardIds: [three.id], onToggleCard: () => {}, onBid: () => {},
+    onPlay: (activated: boolean) => { plays.push(activated); }, onPass: () => {}, onContinue: () => {}, onRestart: () => {},
+  };
+  const table = render(React.createElement(GameTable, props));
+  const toggle = screen.getByRole('checkbox', { name: '发动逆流' }) as HTMLInputElement;
+  assert.equal(toggle.disabled, false);
+  fireEvent.click(toggle);
+  assert.equal(toggle.checked, true);
+
+  table.rerender(React.createElement(GameTable, { ...props, selectedCardIds: [four.id] }));
+  assert.equal((screen.getByRole('checkbox', { name: '发动逆流' }) as HTMLInputElement).checked, false);
+  fireEvent.click(screen.getByRole('checkbox', { name: '发动逆流' }));
+  fireEvent.click(screen.getByRole('button', { name: '出牌' }));
+  assert.deepEqual(plays, [true]);
+
+  table.rerender(React.createElement(GameTable, { ...props, selectedCardIds: [three.id, four.id] }));
+  assert.equal(screen.getByRole('checkbox', { name: '发动逆流' }).hasAttribute('disabled'), true);
+});
+
+test('reverse activation is unavailable when following or without the hex', async () => {
+  const snapshot = await new LocalGameClient(84).getSnapshot();
+  const card = snapshot.view.hand[0]!;
+  const reverse = HEXES.find((hex) => hex.id === 'reverse_flow')!;
+  const view = { ...snapshot.view, phase: 'PLAY' as const, currentActor: 'A' as const,
+    lastPlay: { playerId: 'B' as const, cards: [card], pattern: classifyCards([card])! },
+    hexPicks: { ...snapshot.view.hexPicks, A: [reverse] } };
+  const props = { snapshot: { ...snapshot, view }, busy: false, selectedCardIds: [card.id],
+    onToggleCard: () => {}, onBid: () => {}, onPlay: () => {}, onPass: () => {}, onContinue: () => {}, onRestart: () => {} };
+  const table = render(React.createElement(GameTable, props));
+  assert.equal(screen.queryByRole('checkbox', { name: '发动逆流' }), null);
+
+  table.rerender(React.createElement(GameTable, { ...props,
+    snapshot: { ...snapshot, view: { ...view, lastPlay: null, hexPicks: { ...view.hexPicks, A: [] } } } }));
+  assert.equal(screen.queryByRole('checkbox', { name: '发动逆流' }), null);
 });
 
 test('each seat shows its latest play or pass', async () => {
@@ -259,4 +336,93 @@ test('pointer sweep sets the same selection state across a card range', async ()
   fireEvent.pointerDown(buttons[0], { pointerId: 1, pointerType: 'touch' });
   fireEvent.pointerEnter(buttons[2], { pointerId: 1, pointerType: 'touch' });
   assert.deepEqual(new Set(selected), new Set(cards.map((card) => card.id)));
+});
+
+test('crown designation uses one selected physical card', async () => {
+  const snapshot = await new LocalGameClient(84).getSnapshot();
+  const card = snapshot.view.hand[0];
+  const chosen: string[] = [];
+  render(React.createElement(GameTable, {
+    snapshot: { ...snapshot, view: { ...snapshot.view, phase: 'KING_DESIGNATE', crownActor: 'A' } },
+    busy: false, selectedCardIds: [card.id], onToggleCard: () => {},
+    onBid: () => {}, onPlay: () => {}, onPass: () => {}, onDesignateKing: (id: string) => { chosen.push(id); },
+    onContinue: () => {}, onRestart: () => {},
+  }));
+  fireEvent.click(screen.getByRole('button', { name: '指定尊王牌' }));
+  assert.deepEqual(chosen, [card.id]);
+});
+
+test('resonance selection submits its physical card and target rank', async () => {
+  const initial = await new LocalGameClient(84).getSnapshot();
+  const deck = createDeck();
+  const three = deck.find((card) => card.rank === '3')!;
+  const queen = deck.find((card) => card.rank === 'Q')!;
+  const calls: Array<{ declaration?: PlayDeclaration }> = [];
+  render(React.createElement(GameTable, {
+    snapshot: { ...initial, view: { ...initial.view, phase: 'PLAY', currentActor: 'A',
+      hand: [three, queen], hexPicks: { ...initial.view.hexPicks, A: [HEXES[0]] } } },
+    busy: false, selectedCardIds: [three.id, queen.id], onToggleCard: () => {},
+    onBid: () => {}, onPlay: (_reverse: boolean, declaration?: PlayDeclaration) => { calls.push({ declaration }); },
+    onPass: () => {}, onContinue: () => {}, onRestart: () => {},
+  }));
+  assert.equal(screen.getByRole('button', { name: '出牌' }).hasAttribute('disabled'), true);
+  fireEvent.change(screen.getByRole('combobox', { name: '出牌方式' }), { target: { value: 'RESONANCE' } });
+  fireEvent.change(screen.getByRole('combobox', { name: '共鸣目标点数' }), { target: { value: 'Q' } });
+  assert.equal(screen.getByRole('button', { name: '出牌' }).hasAttribute('disabled'), false);
+  fireEvent.click(screen.getByRole('button', { name: '出牌' }));
+  assert.deepEqual(calls, [{ declaration: { type: 'RESONANCE', cardId: three.id, asRank: 'Q' } }]);
+});
+
+test('broken straight and same color choices submit explicit declarations', async () => {
+  const initial = await new LocalGameClient(84).getSnapshot();
+  const deck = createDeck();
+  const broken = ['3', '4', '5', '7', '8'].map((rank) => deck.find((card) => card.rank === rank)!);
+  const sameColor = [
+    deck.find((card) => card.rank === '3' && card.suit === 'hearts')!,
+    deck.find((card) => card.rank === '3' && card.suit === 'diamonds')!,
+    ...['5', '7', '9'].map((rank) => deck.find((card) => card.rank === rank && card.suit === 'hearts')!),
+  ];
+  const declarations: Array<PlayDeclaration | undefined> = [];
+  const props = {
+    busy: false, onToggleCard: () => {}, onBid: () => {}, onPass: () => {},
+    onPlay: (_reverse: boolean, declaration?: PlayDeclaration) => { declarations.push(declaration); },
+    onContinue: () => {}, onRestart: () => {},
+  };
+  const table = render(React.createElement(GameTable, {
+    ...props, selectedCardIds: broken.map((card) => card.id),
+    snapshot: { ...initial, view: { ...initial.view, phase: 'PLAY', currentActor: 'A', hand: broken,
+      hexPicks: { ...initial.view.hexPicks, A: [HEXES[1]] } } },
+  }));
+  fireEvent.change(screen.getByRole('combobox', { name: '出牌方式' }), { target: { value: 'BROKEN_STRAIGHT' } });
+  assert.equal(screen.getByRole('button', { name: '出牌' }).hasAttribute('disabled'), false);
+  fireEvent.click(screen.getByRole('button', { name: '出牌' }));
+  assert.deepEqual(declarations, [{ type: 'BROKEN_STRAIGHT' }]);
+
+  table.rerender(React.createElement(GameTable, {
+    ...props, selectedCardIds: sameColor.map((card) => card.id),
+    snapshot: { ...initial, view: { ...initial.view, phase: 'PLAY', currentActor: 'A', hand: sameColor,
+      hexPicks: { ...initial.view.hexPicks, A: [HEXES[4]] } } },
+  }));
+  fireEvent.change(screen.getByRole('combobox', { name: '出牌方式' }), { target: { value: 'SAME_COLOR' } });
+  assert.equal(screen.getByRole('button', { name: '出牌' }).hasAttribute('disabled'), false);
+  fireEvent.click(screen.getByRole('button', { name: '出牌' }));
+  assert.deepEqual(declarations, [{ type: 'BROKEN_STRAIGHT' }, { type: 'SAME_COLOR' }]);
+});
+
+test('abandon passes with the selected physical card only when charge remains', async () => {
+  const initial = await new LocalGameClient(84).getSnapshot();
+  const [three, four] = createDeck().slice(0, 2);
+  const discards: Array<string | undefined> = [];
+  const view = { ...initial.view, phase: 'PLAY' as const, currentActor: 'A' as const,
+    hand: [three, four], lastPlay: { playerId: 'B' as const, cards: [three], pattern: classifyCards([three])! },
+    hexPicks: { ...initial.view.hexPicks, A: [HEXES[2]] } };
+  const props = { snapshot: { ...initial, view }, busy: false, selectedCardIds: [four.id],
+    onToggleCard: () => {}, onBid: () => {}, onPlay: () => {},
+    onPass: (id?: string) => { discards.push(id); }, onContinue: () => {}, onRestart: () => {} };
+  const table = render(React.createElement(GameTable, props));
+  fireEvent.click(screen.getByRole('button', { name: '弃守' }));
+  assert.deepEqual(discards, [four.id]);
+  table.rerender(React.createElement(GameTable, { ...props,
+    snapshot: { ...props.snapshot, view: { ...view, hexUses: { ...view.hexUses, A: { ...view.hexUses.A, abandon: 1 } } } } }));
+  assert.equal(screen.queryByRole('button', { name: '弃守' }), null);
 });

@@ -43,7 +43,7 @@ test('rejected command returns an unchanged view and public event history with a
   assert.equal(after.notice, '当前阶段不能执行该操作');
 });
 
-test('three-hand Run pauses for each settlement and restart restores the fixed initial deal', async () => {
+test('six-hand Run pauses for each settlement and restart restores the fixed initial deal', async () => {
   const client = new LocalGameClient(2026, 0);
   const initial = await client.getSnapshot();
   let snapshot = initial;
@@ -52,8 +52,8 @@ test('three-hand Run pauses for each settlement and restart restores the fixed i
   while (snapshot.view.phase !== 'RUN_END') {
     if (snapshot.awaitingContinue) {
       const handSettled = snapshot.publicEvents.filter((event) => event.type === 'HAND_SETTLED').length;
-      assert.ok(handSettled <= 3);
-      if (handSettled < 3) snapshot = await client.continueRun();
+      assert.ok(handSettled <= 6);
+      if (handSettled < 6) snapshot = await client.continueRun();
       else break;
       continue;
     }
@@ -65,7 +65,7 @@ test('three-hand Run pauses for each settlement and restart restores the fixed i
 
   assert.equal(snapshot.view.phase, 'RUN_END');
   assert.equal(snapshot.awaitingContinue, false);
-  assert.equal(snapshot.publicEvents.filter((event) => event.type === 'HAND_SETTLED').length, 3);
+  assert.equal(snapshot.publicEvents.filter((event) => event.type === 'HAND_SETTLED').length, 6);
   assert.equal(snapshot.publicEvents.at(-1)?.type, 'RUN_FINISHED');
 
   const restarted = await client.restart();
@@ -123,4 +123,23 @@ test('mutating a returned view cannot alter the internal game state', async () =
 
   const next = await client.getSnapshot();
   assert.equal(next.view.hand[0].rank, originalRank);
+});
+
+test('hex-enabled six-hand client advances through drafts and crown designation', async () => {
+  const client = new LocalGameClient(41, 0, true);
+  let snapshot = await client.getSnapshot();
+  let commands = 0;
+  while (snapshot.view.phase !== 'RUN_END') {
+    if (snapshot.awaitingContinue) snapshot = await client.continueRun();
+    else if (snapshot.view.phase === 'HEX_DRAFT') {
+      const candidate = snapshot.view.hexDraft?.candidates.find((item) => item.id === 'crown_me')
+        ?? snapshot.view.hexDraft?.candidates[0];
+      assert.ok(candidate);
+      snapshot = await client.sendCommand({ type: 'SELECT_HEX', playerId: 'A', candidateId: candidate.id });
+    } else snapshot = await client.sendCommand(chooseAiCommand(snapshot.view));
+    assert.equal(snapshot.notice, null);
+    assert.ok(++commands < 3000);
+  }
+  assert.equal(snapshot.publicEvents.filter((event) => event.type === 'HAND_SETTLED').length, 6);
+  assert.equal(snapshot.publicEvents.filter((event) => event.type === 'HEX_SELECTED').length, 6);
 });

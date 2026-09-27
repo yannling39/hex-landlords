@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import type { CardId } from '../domain/card.js';
-import type { BidScore, Command } from '../domain/commands.js';
+import type { BidScore, Command, PlayDeclaration } from '../domain/commands.js';
 import { LocalGameClient, type GameSnapshot } from './game-client.js';
 import GameTable from './components/GameTable.js';
 
 export default function App() {
-  const [client] = useState(() => new LocalGameClient());
+  const [client] = useState(() => new LocalGameClient(undefined, 1_000, true));
   const [snapshot, setSnapshot] = useState<GameSnapshot | null>(null);
   const [selectedCardIds, setSelectedCardIds] = useState<CardId[]>([]);
   const [busy, setBusy] = useState(false);
@@ -31,6 +31,7 @@ export default function App() {
         const newEvents = next.publicEvents.slice(eventCount);
         eventCount = next.publicEvents.length;
         if (newEvents.some((event) => event.type === 'TRICK_CLOSED'
+          || (event.type === 'KING_DESIGNATED' && event.playerId === 'A')
           || (clearSelection && event.type === 'CARDS_PLAYED' && event.playerId === 'A'))) {
           setSelectedCardIds([]);
         }
@@ -65,8 +66,11 @@ export default function App() {
         ? current.includes(cardId) ? current : [...current, cardId]
         : current.filter((id) => id !== cardId))}
       onBid={(score: BidScore) => send({ type: 'BID', playerId: 'A', score })}
-      onPlay={() => send({ type: 'PLAY', playerId: 'A', cardIds: selectedCardIds })}
-      onPass={() => send({ type: 'PASS', playerId: 'A' })}
+      onPlay={(reverse: boolean, declaration?: PlayDeclaration) => send({ type: 'PLAY', playerId: 'A', cardIds: selectedCardIds,
+        ...(reverse ? { reverse: true } : {}), ...(declaration ? { declaration } : {}) })}
+      onPass={(discardCardId) => send({ type: 'PASS', playerId: 'A', ...(discardCardId ? { discardCardId } : {}) })}
+      onDesignateKing={(cardId) => send({ type: 'DESIGNATE_KING', playerId: 'A', cardId })}
+      onSelectHex={(candidateId) => send({ type: 'SELECT_HEX', playerId: 'A', candidateId })}
       onContinue={() => void updateFrom((onProgress) => client.continueRun(onProgress), true)}
       onRestart={() => void updateFrom(() => client.restart(), true)}
     />

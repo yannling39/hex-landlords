@@ -1,17 +1,19 @@
 import type { GameEvent } from '../../domain/events.js';
-import { formatCard } from './TrickArea.js';
+import { formatCard, formatDeclaration } from './TrickArea.js';
 
 function formatEvent(event: GameEvent): string {
   switch (event.type) {
     case 'BID_ACCEPTED': return `玩家 ${event.playerId} 叫 ${event.score} 分`;
     case 'HAND_REDEALT': return `第 ${event.handNumber} 手重新发牌`;
     case 'LANDLORD_SELECTED': return `玩家 ${event.playerId} 成为地主`;
-    case 'CARDS_PLAYED': return `玩家 ${event.playerId} 出牌：${event.cards.map(formatCard).join(' ')}`;
-    case 'PLAYER_PASSED': return `玩家 ${event.playerId} 不出`;
+    case 'CARDS_PLAYED': return `玩家 ${event.playerId} ${event.reverse ? '发动逆流，' : ''}出牌：${event.cards.map(formatCard).join(' ')}${event.declaration ? `（${formatDeclaration(event.declaration, event.cards)}）` : ''}`;
+    case 'PLAYER_PASSED': return `玩家 ${event.playerId} 不出${event.discardedCard ? `，弃掉 ${formatCard(event.discardedCard)}` : ''}`;
     case 'TRICK_CLOSED': return `本墩结束，玩家 ${event.leaderId} 领出`;
     case 'HAND_FINISHED': return `本手结束，${event.winnerSide === 'LANDLORD' ? '地主方' : '农民方'}胜`;
     case 'HAND_SETTLED': return `第 ${event.handNumber} 手结算`;
-    case 'RUN_FINISHED': return '三手 Run 结束';
+    case 'HEX_SELECTED': return `玩家 ${event.playerId} 抽取 ${event.label}`;
+    case 'KING_DESIGNATED': return `玩家 ${event.playerId} 指定 ${formatCard(event.card)} 为尊王牌`;
+    case 'RUN_FINISHED': return '六手 Run 结束';
   }
 }
 
